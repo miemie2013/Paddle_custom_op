@@ -1,0 +1,10 @@
+__pycache__/
+.cache/
+.idea/
+datasets/
+out/
+out*/
+*.pkl
+*.pth
+*.npz
+*.pdparams
