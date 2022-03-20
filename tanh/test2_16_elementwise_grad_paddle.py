@@ -36,6 +36,15 @@ for batch_idx in range(8):
 
     loss = paddle.tanh(out)
     dloss_dstyles = paddle.grad(outputs=[loss.sum()], inputs=[styles], create_graph=True)[0]
+    # y = paddle.tanh(out)
+    # dloss_dstyles = paddle.grad(outputs=[y.sum()], inputs=[styles], create_graph=True)[0]
+    #
+    # loss = dloss_dstyles.sum()
+    # loss.backward()
+    # double_grad_paddle = styles.gradient()
+    #
+    # double_grad_paddle2 = 2*(y*y*y - y)
+    # double_grad_paddle2 = double_grad_paddle2.numpy()
 
 
     out_paddle = out.numpy()
