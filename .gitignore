@@ -8,3 +8,9 @@ out*/
 *.pth
 *.npz
 *.pdparams
+
+
+# custom op
+*build/
+*custom_ops*
+
