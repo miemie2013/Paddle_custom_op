@@ -8,6 +8,10 @@ out*/
 *.pth
 *.npz
 *.pdparams
+*.zip
+*.jpg
+*.png
+*.gif
 
 
 # custom op
