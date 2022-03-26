@@ -1,58 +1,47 @@
-
 import paddle
 import numpy as np
-import paddle.nn.functional as F
+from tanh.networks_paddle import FullyConnectedLayer
 
 
 
+w_dim = 512
+in_channels = 256
+activation = 'linear'
+batch_size = 2
+lr = 0.1
 
 
-dic2 = np.load('16_grad.npz')
+model = FullyConnectedLayer(w_dim, in_channels, activation=activation, bias_init=1)
+model.train()
+optimizer = paddle.optimizer.Momentum(parameters=model.parameters(), learning_rate=lr, momentum=0.9)
+model.set_state_dict(paddle.load("16.pdparams"))
+
+
+dic2 = np.load('16.npz')
 for batch_idx in range(8):
     print('======================== batch_%.3d ========================'%batch_idx)
+    optimizer.clear_gradients()
 
-    dloss_dstyles_pytorch = dic2['batch_%.3d.dloss_dstyles'%batch_idx]
-    out_pytorch = dic2['batch_%.3d.out'%batch_idx]
-    styles = dic2['batch_%.3d.styles'%batch_idx]
-    styles = paddle.to_tensor(styles)
-    styles.stop_gradient = False
-    weight = dic2['batch_%.3d.weight'%batch_idx]
-    weight = paddle.to_tensor(weight)
-    weight.stop_gradient = False
+    dloss_dx_pytorch = dic2['batch_%.3d.dloss_dx'%batch_idx]
+    y_pytorch = dic2['batch_%.3d.y'%batch_idx]
     x = dic2['batch_%.3d.x'%batch_idx]
     x = paddle.to_tensor(x)
     x.stop_gradient = False
 
-    batch_size = 2
+    y = model(x)
+    loss = paddle.tanh(y)
+    dloss_dx = paddle.grad(outputs=[loss.sum()], inputs=[x], create_graph=True)[0]
 
-    out_C, in_C, kH, kW = weight.shape
-
-    w = weight.unsqueeze(0)           # [1, out_C, in_C, kH, kW]
-    styles2 = styles.reshape((batch_size, 1, -1, 1, 1))
-    w1 = w * styles2     # [N, out_C, in_C, kH, kW]
-    dcoefs = w1.sum(axis=[2,3,4])        # [N, out_C]
-    # w2 = w1 * dcoefs.reshape((batch_size, -1, 1, 1, 1))   # [N, out_C, in_C, kH, kW]
-    out = w1
-
-    loss = paddle.tanh(out)
-    dloss_dstyles = paddle.grad(outputs=[loss.sum()], inputs=[styles], create_graph=True)[0]
-    # y = paddle.tanh(out)
-    # dloss_dstyles = paddle.grad(outputs=[y.sum()], inputs=[styles], create_graph=True)[0]
-    #
-    # loss = dloss_dstyles.sum()
-    # loss.backward()
-    # double_grad_paddle = styles.gradient()
-    #
-    # double_grad_paddle2 = 2*(y*y*y - y)
-    # double_grad_paddle2 = double_grad_paddle2.numpy()
-
-
-    out_paddle = out.numpy()
-    ddd = np.mean((out_pytorch - out_paddle) ** 2)
+    y_paddle = y.numpy()
+    ddd = np.mean((y_pytorch - y_paddle) ** 2)
     print('ddd=%.6f' % ddd)
 
-    dloss_dstyles_paddle = dloss_dstyles.numpy()
-    ddd = np.mean((dloss_dstyles_pytorch - dloss_dstyles_paddle) ** 2)
+    dloss_dx_paddle = dloss_dx.numpy()
+    ddd = np.mean((dloss_dx_pytorch - dloss_dx_paddle) ** 2)
     print('ddd=%.6f' % ddd)
     print()
+
+    loss = dloss_dx.sum() + loss.sum()
+    loss.backward()
+    optimizer.step()
 print()

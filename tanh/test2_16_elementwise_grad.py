@@ -1,42 +1,39 @@
-
 import torch
 import numpy as np
-
-import torch.nn.functional as F
-
+from tanh.networks_pytorch import FullyConnectedLayer
 
 
 
+w_dim = 512
+in_channels = 256
+activation = 'linear'
+batch_size = 2
+lr = 0.1
 
 
+model = FullyConnectedLayer(w_dim, in_channels, activation=activation, bias_init=1)
+model.train()
+optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+torch.save(model.state_dict(), "16.pth")
 
 dic = {}
 for batch_idx in range(8):
-    x = torch.randn([2, 6, 16, 16])
-    styles = torch.randn([2, 6])
-    weight = torch.randn([6, 6, 3, 3])
+    optimizer.zero_grad(set_to_none=True)
 
-
-    weight.requires_grad_(True)
+    x = torch.randn([batch_size, w_dim])
     x.requires_grad_(True)
-    styles.requires_grad_(True)
-    batch_size = 2
 
-    out_C, in_C, kH, kW = weight.shape
+    y = model(x)
+    loss = torch.tanh(y)
 
-    w = weight.unsqueeze(0) # [1, out_C, in_C, kH, kW]
-    w = w * styles.reshape(batch_size, 1, -1, 1, 1) # [N, out_C, in_C, kH, kW]
-    dcoefs = w.sum(dim=[2,3,4])  # [N, out_C]
-    # w = w * dcoefs.reshape((batch_size, -1, 1, 1, 1))  # [N, out_C, in_C, kH, kW]
-    out = w
-    loss = torch.tanh(out)
+    dloss_dx = torch.autograd.grad(outputs=[loss.sum()], inputs=[x], create_graph=True, only_inputs=True)[0]
 
-    dloss_dstyles = torch.autograd.grad(outputs=[loss.sum()], inputs=[styles], create_graph=True, only_inputs=True)[0]
-
-    dic['batch_%.3d.dloss_dstyles'%batch_idx] = dloss_dstyles.cpu().detach().numpy()
-    dic['batch_%.3d.out'%batch_idx] = out.cpu().detach().numpy()
-    dic['batch_%.3d.styles'%batch_idx] = styles.cpu().detach().numpy()
-    dic['batch_%.3d.weight'%batch_idx] = weight.cpu().detach().numpy()
+    dic['batch_%.3d.dloss_dx'%batch_idx] = dloss_dx.cpu().detach().numpy()
+    dic['batch_%.3d.y'%batch_idx] = y.cpu().detach().numpy()
     dic['batch_%.3d.x'%batch_idx] = x.cpu().detach().numpy()
-np.savez('16_grad', **dic)
+
+    loss = dloss_dx.sum() + loss.sum()
+    loss.backward()
+    optimizer.step()
+np.savez('16', **dic)
 print()
