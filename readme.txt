@@ -1,6 +1,16 @@
 
+目前只有develop分支支持二阶导数：
+python -m pip install paddlepaddle-gpu==0.0.0.post101 -f https://www.paddlepaddle.org.cn/whl/linux/gpu/develop.html
+
+
 
 cd ~/work/tanh
+
+
+rm -rf *.cpp
+rm -rf *.cu
+
+
 python setup.py install
 
 
