@@ -57,7 +57,7 @@ for batch_idx in range(8):
     x.stop_gradient = False
 
     y = model(x)
-    loss = paddle.sum(y, axis=1)
+    loss = paddle.sum(y, axis=1, keepdim=True)
     dloss_dx = paddle.grad(outputs=[loss.sum()], inputs=[x], create_graph=True)[0]
 
     y_paddle = y.numpy()

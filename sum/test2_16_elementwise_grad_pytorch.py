@@ -23,7 +23,7 @@ class MySum(torch.autograd.Function):
     def forward(ctx, x, dim):
         ctx.dim = dim
         ctx.dim_len = x.shape[dim]
-        y = torch.sum(x, dim=dim)
+        y = torch.sum(x, dim=dim, keepdim=True)
         return y
 
     @staticmethod
@@ -38,13 +38,13 @@ class MySumGrad(torch.autograd.Function):
     @staticmethod
     def forward(ctx, dy, dim, dim_len):
         ctx.dim = dim
-        dx = dy.unsqueeze(dim).repeat([1, dim_len])
+        dx = dy.repeat([1, dim_len])
         return dx
 
     @staticmethod
     def backward(ctx, ddx):
         dim = ctx.dim
-        ddy = torch.sum(ddx, dim=dim)
+        ddy = torch.sum(ddx, dim=dim, keepdim=True)
         return ddy, None, None
 
 

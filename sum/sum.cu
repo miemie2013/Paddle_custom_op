@@ -7,7 +7,7 @@
 #define BLOCK 512
 
 template<typename data_t>
-__global__ void tanh_cuda_forward_kernel(const data_t* x,
+__global__ void sum_cuda_forward_kernel(const data_t* x,
                                          data_t* y,
                                          int num){
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -17,7 +17,7 @@ __global__ void tanh_cuda_forward_kernel(const data_t* x,
 }
 
 template<typename data_t>
-__global__ void tanh_cuda_backward_kernel(const data_t* x,
+__global__ void sum_cuda_backward_kernel(const data_t* x,
                                           const data_t* dy,
                                           data_t* dx,
                                           int num){
@@ -28,8 +28,7 @@ __global__ void tanh_cuda_backward_kernel(const data_t* x,
 }
 
 template<typename data_t>
-__global__ void tanh_cuda_double_backward_kernel(const data_t* y,
-                                                 const data_t* dy,
+__global__ void sum_cuda_double_backward_kernel(const data_t* y,
                                                  const data_t* ddx,
                                                  data_t* ddy,
                                                  data_t* dy_new,
@@ -44,15 +43,15 @@ __global__ void tanh_cuda_double_backward_kernel(const data_t* y,
 }
 
 
-std::vector<paddle::Tensor> tanh_cuda_forward(const paddle::Tensor& x){
+std::vector<paddle::Tensor> sum_cuda_forward(const paddle::Tensor& x, const int64_t& axis){
     auto y = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
 
     int numel = x.size();
     int grid = (numel + BLOCK - 1) / BLOCK;
 
     PD_DISPATCH_FLOATING_TYPES(
-        x.type(), "tanh_cuda_forward_kernel", ([&] {
-            tanh_cuda_forward_kernel<data_t><<<grid, BLOCK, 0, x.stream()>>>(
+        x.type(), "sum_cuda_forward_kernel", ([&] {
+            sum_cuda_forward_kernel<data_t><<<grid, BLOCK, 0, x.stream()>>>(
                 x.data<data_t>(),
                 y.mutable_data<data_t>(x.place()),
                 numel
@@ -63,8 +62,7 @@ std::vector<paddle::Tensor> tanh_cuda_forward(const paddle::Tensor& x){
     return {y};
 }
 
-std::vector<paddle::Tensor> tanh_cuda_backward(const paddle::Tensor& x,
-                                               const paddle::Tensor& y,
+std::vector<paddle::Tensor> sum_cuda_backward(const paddle::Tensor& x,
                                                const paddle::Tensor& dy){
     auto dx = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
 
@@ -72,8 +70,8 @@ std::vector<paddle::Tensor> tanh_cuda_backward(const paddle::Tensor& x,
     int grid = (numel + BLOCK - 1) / BLOCK;
 
     PD_DISPATCH_FLOATING_TYPES(
-        x.type(), "tanh_cuda_backward_kernel", ([&] {
-            tanh_cuda_backward_kernel<data_t><<<grid, BLOCK, 0, x.stream()>>>(
+        x.type(), "sum_cuda_backward_kernel", ([&] {
+            sum_cuda_backward_kernel<data_t><<<grid, BLOCK, 0, x.stream()>>>(
                 x.data<data_t>(),
                 dy.data<data_t>(),
                 dx.mutable_data<data_t>(x.place()),
@@ -85,23 +83,19 @@ std::vector<paddle::Tensor> tanh_cuda_backward(const paddle::Tensor& x,
     return {dx};
 }
 
-std::vector<paddle::Tensor> tanh_cuda_double_backward(const paddle::Tensor& y,
-                                                      const paddle::Tensor& dy,
+std::vector<paddle::Tensor> sum_cuda_double_backward(const paddle::Tensor& y,
                                                       const paddle::Tensor& ddx){
     CHECK_GPU_INPUT(y);
-    CHECK_GPU_INPUT(dy);
     CHECK_GPU_INPUT(ddx);
     auto ddy = paddle::Tensor(paddle::PlaceType::kGPU, y.shape());
-    auto dy_new = paddle::Tensor(paddle::PlaceType::kGPU, y.shape());
 
     int numel = y.size();
     int grid = (numel + BLOCK - 1) / BLOCK;
 
     PD_DISPATCH_FLOATING_TYPES(
-        y.type(), "tanh_cuda_double_backward_kernel", ([&] {
-            tanh_cuda_double_backward_kernel<data_t><<<grid, BLOCK, 0, y.stream()>>>(
+        y.type(), "sum_cuda_double_backward_kernel", ([&] {
+            sum_cuda_double_backward_kernel<data_t><<<grid, BLOCK, 0, y.stream()>>>(
                 y.data<data_t>(),
-                dy.data<data_t>(),
                 ddx.data<data_t>(),
                 ddy.mutable_data<data_t>(y.place()),
                 dy_new.mutable_data<data_t>(y.place()),
@@ -110,7 +104,7 @@ std::vector<paddle::Tensor> tanh_cuda_double_backward(const paddle::Tensor& y,
         })
     );
 
-    return {ddy, dy_new};
+    return {ddy};
 }
 
 

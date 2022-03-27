@@ -24,7 +24,7 @@ for batch_idx in range(8):
     x.requires_grad_(True)
 
     y = model(x)
-    loss = torch.sum(y, dim=1)
+    loss = torch.sum(y, dim=1, keepdim=True)
 
     dloss_dx = torch.autograd.grad(outputs=[loss.sum()], inputs=[x], create_graph=True, only_inputs=True)[0]
 
