@@ -11,8 +11,7 @@ __global__ void tanh_cuda_forward_kernel(const data_t* x,
                                          data_t* y,
                                          int num){
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
-
-    for(int i=gid; i<num; i+=blockDim.x*gridDim.x){
+    for (int i = gid; i < num; i += blockDim.x * gridDim.x) {
         y[i] = std::tanh(x[i]);
     }
 }
@@ -23,8 +22,7 @@ __global__ void tanh_cuda_backward_kernel(const data_t* x,
                                           data_t* dx,
                                           int num){
     int gid = blockIdx.x * blockDim.x + threadIdx.x;
-
-    for(int i=gid; i<num; i+=blockDim.x*gridDim.x){
+    for (int i = gid; i < num; i += blockDim.x * gridDim.x) {
         dx[i] = dy[i] * (1 - std::pow(std::tanh(x[i]), 2));
     }
 }
@@ -36,16 +34,15 @@ __global__ void tanh_cuda_double_backward_kernel(const data_t* y,
                                                  data_t* ddy,
                                                  int num){
     int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
-
     // ddy = ddx * (1 - torch.square(y))
     // dy2 = ddx * dy * -2 * y
-    for(int64_t i=num; i<num; i+=blockDim.x*gridDim.x){
+    for (int64_t i = num; i < num; i += blockDim.x * gridDim.x) {
         ddy[i] = ddx[i] * (1 - std::pow(y[i], 2));
     }
 }
 
 
-std::vector<paddle::Tensor> tanh_cuda_forward(const paddle::Tensor &x){
+std::vector<paddle::Tensor> tanh_cuda_forward(const paddle::Tensor& x){
     auto y = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
 
     int numel = x.size();
@@ -64,9 +61,9 @@ std::vector<paddle::Tensor> tanh_cuda_forward(const paddle::Tensor &x){
     return {y};
 }
 
-std::vector<paddle::Tensor> tanh_cuda_backward(const paddle::Tensor &x,
-                                               const paddle::Tensor &y,
-                                               const paddle::Tensor &dy){
+std::vector<paddle::Tensor> tanh_cuda_backward(const paddle::Tensor& x,
+                                               const paddle::Tensor& y,
+                                               const paddle::Tensor& dy){
     auto dx = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
 
     int numel = y.size();
@@ -86,9 +83,9 @@ std::vector<paddle::Tensor> tanh_cuda_backward(const paddle::Tensor &x,
     return {dx};
 }
 
-std::vector<paddle::Tensor> tanh_cuda_double_backward(const paddle::Tensor &y,
-                                                      // const paddle::Tensor &dy,
-                                                      const paddle::Tensor &ddx){
+std::vector<paddle::Tensor> tanh_cuda_double_backward(const paddle::Tensor& y,
+                                                      // const paddle::Tensor& dy,
+                                                      const paddle::Tensor& ddx){
     CHECK_GPU_INPUT(y);
     // CHECK_GPU_INPUT(dy);
     CHECK_GPU_INPUT(ddx);

@@ -4,15 +4,15 @@
 #define CHECK_INPUT(x) PD_CHECK(x.place() == paddle::PlaceType::kGPU, #x " must be a GPU Tensor.")
 
 // cuda实现声明
-std::vector<paddle::Tensor> tanh_cuda_forward(const paddle::Tensor &x);
+std::vector<paddle::Tensor> tanh_cuda_forward(const paddle::Tensor& x);
 
-std::vector<paddle::Tensor> tanh_cuda_backward(const paddle::Tensor &x,
-                                               const paddle::Tensor &y,
-                                               const paddle::Tensor &dy);
+std::vector<paddle::Tensor> tanh_cuda_backward(const paddle::Tensor& x,
+                                               const paddle::Tensor& y,
+                                               const paddle::Tensor& dy);
 
-std::vector<paddle::Tensor> tanh_cuda_double_backward(const paddle::Tensor &y,
-                                                      // const paddle::Tensor &dy,
-                                                      const paddle::Tensor &ddx);
+std::vector<paddle::Tensor> tanh_cuda_double_backward(const paddle::Tensor& y,
+                                                      // const paddle::Tensor& dy,
+                                                      const paddle::Tensor& ddx);
 
 // 决定调用cpu或者gpu实现。暂时只提供了gpu实现
 std::vector<paddle::Tensor> TanhForward(const paddle::Tensor& x) {
