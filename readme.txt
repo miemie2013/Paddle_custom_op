@@ -11,6 +11,8 @@ rm -rf *.cpp
 rm -rf *.cu
 
 
+rm -rf build
+rm -rf custom_ops.egg-info
 python setup.py install
 
 
