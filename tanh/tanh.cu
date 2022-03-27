@@ -29,15 +29,17 @@ __global__ void tanh_cuda_backward_kernel(const data_t* x,
 
 template<typename data_t>
 __global__ void tanh_cuda_double_backward_kernel(const data_t* y,
-                                                 // const data_t* dy,
+                                                 const data_t* dy,
                                                  const data_t* ddx,
                                                  data_t* ddy,
+                                                 data_t* dy_new,
                                                  int num){
     int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
     // ddy = ddx * (1 - torch.square(y))
-    // dy2 = ddx * dy * -2 * y
+    // dy_new = ddx * dy * -2 * y
     for (int64_t i = num; i < num; i += blockDim.x * gridDim.x) {
         ddy[i] = ddx[i] * (1 - std::pow(y[i], 2));
+        dy_new[i] = ddx[i] * dy[i] * static_cast<data_t>(-2.) * y[i];
     }
 }
 
@@ -84,12 +86,13 @@ std::vector<paddle::Tensor> tanh_cuda_backward(const paddle::Tensor& x,
 }
 
 std::vector<paddle::Tensor> tanh_cuda_double_backward(const paddle::Tensor& y,
-                                                      // const paddle::Tensor& dy,
+                                                      const paddle::Tensor& dy,
                                                       const paddle::Tensor& ddx){
     CHECK_GPU_INPUT(y);
-    // CHECK_GPU_INPUT(dy);
+    CHECK_GPU_INPUT(dy);
     CHECK_GPU_INPUT(ddx);
     auto ddy = paddle::Tensor(paddle::PlaceType::kGPU, y.shape());
+    auto dy_new = paddle::Tensor(paddle::PlaceType::kGPU, y.shape());
 
     int numel = y.size();
     int grid = (numel + BLOCK - 1) / BLOCK;
@@ -98,15 +101,16 @@ std::vector<paddle::Tensor> tanh_cuda_double_backward(const paddle::Tensor& y,
         y.type(), "tanh_cuda_double_backward_kernel", ([&] {
             tanh_cuda_double_backward_kernel<data_t><<<grid, BLOCK, 0, y.stream()>>>(
                 y.data<data_t>(),
-                // dy.data<data_t>(),
+                dy.data<data_t>(),
                 ddx.data<data_t>(),
                 ddy.mutable_data<data_t>(y.place()),
+                dy_new.mutable_data<data_t>(y.place()),
                 numel
             );
         })
     );
 
-    return {ddy};
+    return {ddy, dy_new};
 }
 
 
