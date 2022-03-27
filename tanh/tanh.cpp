@@ -10,7 +10,7 @@ std::vector<paddle::Tensor> tanh_backward_cuda(const paddle::Tensor &input,
                                                const paddle::Tensor &output_grad);
 
 std::vector<paddle::Tensor> tanh_double_backward_cuda(const paddle::Tensor &output,
-                                                      const paddle::Tensor &output_grad,
+                                                      // const paddle::Tensor &output_grad,
                                                       const paddle::Tensor &input_double_grad);
 
 std::vector<paddle::Tensor> tanh_forward(const paddle::Tensor& input) {
@@ -30,18 +30,31 @@ std::vector<paddle::Tensor> tanh_backward(const paddle::Tensor& input,
 }
 
 std::vector<paddle::Tensor> tanh_double_backward(const paddle::Tensor& output,
-                                                 const paddle::Tensor& output_grad,
+                                                 // const paddle::Tensor& output_grad,
                                                  const paddle::Tensor& input_double_grad) {
   CHECK_INPUT(output);
-  CHECK_INPUT(output_grad);
+  // CHECK_INPUT(output_grad);
   CHECK_INPUT(input_double_grad);
 
-  return tanh_double_backward_cuda(output, output_grad, input_double_grad);
+//  return tanh_double_backward_cuda(output, output_grad, input_double_grad);
+  return tanh_double_backward_cuda(output, input_double_grad);
+}
+
+std::vector<std::vector<int64_t>> tanh_forward_InferShape(
+    const std::vector<int64_t>& x_shape) {
+  return {x_shape};
+}
+
+std::vector<std::vector<int64_t>> tanh_backward_InferShape(
+    const std::vector<int64_t>& x_shape,
+    const std::vector<int64_t>& y_shape,
+    const std::vector<int64_t>& dy_shape) {
+  return {x_shape};
 }
 
 std::vector<std::vector<int64_t>> tanh_double_backward_InferShape(
     const std::vector<int64_t>& y_shape,
-    const std::vector<int64_t>& dy_shape,
+    // const std::vector<int64_t>& dy_shape,
     const std::vector<int64_t>& ddx_shape) {
   return {y_shape};
 }
@@ -49,15 +62,18 @@ std::vector<std::vector<int64_t>> tanh_double_backward_InferShape(
 PD_BUILD_OP(tanh_op)
     .Inputs({"input"})
     .Outputs({"output"})
-    .SetKernelFn(PD_KERNEL(tanh_forward));
+    .SetKernelFn(PD_KERNEL(tanh_forward))
+    .SetInferShapeFn(PD_INFER_SHAPE(tanh_forward_InferShape));
 
 PD_BUILD_GRAD_OP(tanh_op)
     .Inputs({"input", "output", paddle::Grad("output")})
     .Outputs({paddle::Grad("input")})
-    .SetKernelFn(PD_KERNEL(tanh_backward));
+    .SetKernelFn(PD_KERNEL(tanh_backward))
+    .SetInferShapeFn(PD_INFER_SHAPE(tanh_backward_InferShape));
 
 PD_BUILD_DOUBLE_GRAD_OP(tanh_op)
-    .Inputs({"output", paddle::Grad("output"), paddle::Grad(paddle::Grad("input"))})
+//    .Inputs({"output", paddle::Grad("output"), paddle::Grad(paddle::Grad("input"))})
+    .Inputs({"output", paddle::Grad(paddle::Grad("input"))})
     .Outputs({paddle::Grad(paddle::Grad("output"))})
     .SetKernelFn(PD_KERNEL(tanh_double_backward))
     .SetInferShapeFn(PD_INFER_SHAPE(tanh_double_backward_InferShape));

@@ -31,7 +31,7 @@ __global__ void tanh_backward_cuda_kernel(const data_t* input_data,
 
 template<typename data_t>
 __global__ void tanh_double_backward_cuda_kernel(const data_t* output_data,
-                                                 const data_t* output_grad_data,
+                                                 // const data_t* output_grad_data,
                                                  const data_t* input_double_grad_data,
                                                  data_t* output_double_grad_data,
                                                  int output_numel){
@@ -87,10 +87,10 @@ std::vector<paddle::Tensor> tanh_backward_cuda(const paddle::Tensor &input,
 }
 
 std::vector<paddle::Tensor> tanh_double_backward_cuda(const paddle::Tensor &output,
-                                                      const paddle::Tensor &output_grad,
+                                                      // const paddle::Tensor &output_grad,
                                                       const paddle::Tensor &input_double_grad){
     CHECK_GPU_INPUT(output);
-    CHECK_GPU_INPUT(output_grad);
+    // CHECK_GPU_INPUT(output_grad);
     CHECK_GPU_INPUT(input_double_grad);
     auto output_double_grad = paddle::Tensor(paddle::PlaceType::kGPU, output.shape());
 
@@ -101,7 +101,7 @@ std::vector<paddle::Tensor> tanh_double_backward_cuda(const paddle::Tensor &outp
         output.type(), "tanh_double_backward_cuda_kernel", ([&] {
             tanh_double_backward_cuda_kernel<data_t><<<grid, BLOCK, 0, output.stream()>>>(
                 output.data<data_t>(),
-                output_grad.data<data_t>(),
+                // output_grad.data<data_t>(),
                 input_double_grad.data<data_t>(),
                 output_double_grad.mutable_data<data_t>(output.place()),
                 output_numel
