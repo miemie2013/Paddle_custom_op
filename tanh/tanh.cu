@@ -2,6 +2,8 @@
 #include <vector>
 #include <cuda.h>
 #include <cuda_runtime.h>
+#define CHECK_GPU_INPUT(x) \
+  PD_CHECK(x.place() == paddle::PlaceType::kGPU, #x " must be a GPU Tensor.")
 #define BLOCK 512
 
 template<typename data_t>
@@ -33,11 +35,11 @@ __global__ void tanh_double_backward_cuda_kernel(const data_t* output_data,
                                                  const data_t* input_double_grad_data,
                                                  data_t* output_double_grad_data,
                                                  int output_numel){
-    int gid = blockIdx.x * blockDim.x + threadIdx.x;
+    int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
 
     // ddy = ddx * (1 - torch.square(y))
     // dy2 = ddx * dy * -2 * y
-    for(int i=gid; i<output_numel; i+=blockDim.x*gridDim.x){
+    for(int64_t i=output_numel; i<output_numel; i+=blockDim.x*gridDim.x){
         output_double_grad_data[i] = input_double_grad_data[i] * (1 - std::pow(output_data[i], 2));
     }
 }
@@ -87,6 +89,9 @@ std::vector<paddle::Tensor> tanh_backward_cuda(const paddle::Tensor &input,
 std::vector<paddle::Tensor> tanh_double_backward_cuda(const paddle::Tensor &output,
                                                       const paddle::Tensor &output_grad,
                                                       const paddle::Tensor &input_double_grad){
+    CHECK_GPU_INPUT(output);
+    CHECK_GPU_INPUT(output_grad);
+    CHECK_GPU_INPUT(input_double_grad);
     auto output_double_grad = paddle::Tensor(paddle::PlaceType::kGPU, output.shape());
 
     int output_numel = output.size();
