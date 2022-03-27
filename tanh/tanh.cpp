@@ -3,43 +3,46 @@
 #define PADDLE_WITH_CUDA
 #define CHECK_INPUT(x) PD_CHECK(x.place() == paddle::PlaceType::kGPU, #x " must be a GPU Tensor.")
 
-std::vector<paddle::Tensor> tanh_forward_cuda(const paddle::Tensor &input);
+// cuda实现声明
+std::vector<paddle::Tensor> tanh_cuda_forward(const paddle::Tensor &x);
 
-std::vector<paddle::Tensor> tanh_backward_cuda(const paddle::Tensor &input,
-                                               const paddle::Tensor &output,
-                                               const paddle::Tensor &output_grad);
+std::vector<paddle::Tensor> tanh_cuda_backward(const paddle::Tensor &x,
+                                               const paddle::Tensor &y,
+                                               const paddle::Tensor &dy);
 
-std::vector<paddle::Tensor> tanh_double_backward_cuda(const paddle::Tensor &output,
-                                                      // const paddle::Tensor &output_grad,
-                                                      const paddle::Tensor &input_double_grad);
+std::vector<paddle::Tensor> tanh_cuda_double_backward(const paddle::Tensor &y,
+                                                      // const paddle::Tensor &dy,
+                                                      const paddle::Tensor &ddx);
 
-std::vector<paddle::Tensor> tanh_forward(const paddle::Tensor& input) {
-  CHECK_INPUT(input);
+// 决定调用cpu或者gpu实现。暂时只提供了gpu实现
+std::vector<paddle::Tensor> TanhForward(const paddle::Tensor& x) {
+  CHECK_INPUT(x);
 
-  return tanh_forward_cuda(input);
+  return tanh_cuda_forward(x);
 }
 
-std::vector<paddle::Tensor> tanh_backward(const paddle::Tensor& input,
-                                          const paddle::Tensor& output,
-                                          const paddle::Tensor& output_grad) {
-  CHECK_INPUT(input);
-  CHECK_INPUT(output);
-  CHECK_INPUT(output_grad);
+std::vector<paddle::Tensor> TanhBackward(const paddle::Tensor& x,
+                                         const paddle::Tensor& y,
+                                         const paddle::Tensor& dy) {
+  CHECK_INPUT(x);
+  CHECK_INPUT(y);
+  CHECK_INPUT(dy);
 
-  return tanh_backward_cuda(input, output, output_grad);
+  return tanh_cuda_backward(x, y, dy);
 }
 
-std::vector<paddle::Tensor> tanh_double_backward(const paddle::Tensor& output,
-                                                 // const paddle::Tensor& output_grad,
-                                                 const paddle::Tensor& input_double_grad) {
-  CHECK_INPUT(output);
-  // CHECK_INPUT(output_grad);
-  CHECK_INPUT(input_double_grad);
+std::vector<paddle::Tensor> TanhDoubleBackward(const paddle::Tensor& y,
+                                               // const paddle::Tensor& dy,
+                                               const paddle::Tensor& ddx) {
+  CHECK_INPUT(y);
+  // CHECK_INPUT(dy);
+  CHECK_INPUT(ddx);
 
-//  return tanh_double_backward_cuda(output, output_grad, input_double_grad);
-  return tanh_double_backward_cuda(output, input_double_grad);
+//  return tanh_cuda_double_backward(y, dy, ddx);
+  return tanh_cuda_double_backward(y, ddx);
 }
 
+// 形状推断函数
 std::vector<std::vector<int64_t>> tanh_forward_InferShape(
     const std::vector<int64_t>& x_shape) {
   return {x_shape};
@@ -60,20 +63,20 @@ std::vector<std::vector<int64_t>> tanh_double_backward_InferShape(
 }
 
 PD_BUILD_OP(tanh_op)
-    .Inputs({"input"})
-    .Outputs({"output"})
-    .SetKernelFn(PD_KERNEL(tanh_forward))
+    .Inputs({"X"})
+    .Outputs({"Y"})
+    .SetKernelFn(PD_KERNEL(TanhForward))
     .SetInferShapeFn(PD_INFER_SHAPE(tanh_forward_InferShape));
 
 PD_BUILD_GRAD_OP(tanh_op)
-    .Inputs({"input", "output", paddle::Grad("output")})
-    .Outputs({paddle::Grad("input")})
-    .SetKernelFn(PD_KERNEL(tanh_backward))
+    .Inputs({"X", "Y", paddle::Grad("Y")})
+    .Outputs({paddle::Grad("X")})
+    .SetKernelFn(PD_KERNEL(TanhBackward))
     .SetInferShapeFn(PD_INFER_SHAPE(tanh_backward_InferShape));
 
 PD_BUILD_DOUBLE_GRAD_OP(tanh_op)
-//    .Inputs({"output", paddle::Grad("output"), paddle::Grad(paddle::Grad("input"))})
-    .Inputs({"output", paddle::Grad(paddle::Grad("input"))})
-    .Outputs({paddle::Grad(paddle::Grad("output"))})
-    .SetKernelFn(PD_KERNEL(tanh_double_backward))
+//    .Inputs({"Y", paddle::Grad("Y"), paddle::Grad(paddle::Grad("X"))})
+    .Inputs({"Y", paddle::Grad(paddle::Grad("X"))})
+    .Outputs({paddle::Grad(paddle::Grad("Y"))})
+    .SetKernelFn(PD_KERNEL(TanhDoubleBackward))
     .SetInferShapeFn(PD_INFER_SHAPE(tanh_double_backward_InferShape));

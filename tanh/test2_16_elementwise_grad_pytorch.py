@@ -57,9 +57,9 @@ class MyTanhGrad(torch.autograd.Function):
     def backward(ctx, ddx):
         dy, y = ctx.saved_tensors
         ddy = ddx * (1 - torch.square(y))
-        dy2 = ddx * dy * -2 * y
-        # dy2 = None
-        return ddy, dy2
+        dy_new = ddx * dy * -2 * y
+        # dy_new = None
+        return ddy, dy_new
 
 # class MyTanhGrad(torch.autograd.Function):
 #     @staticmethod
