@@ -45,7 +45,7 @@ __global__ void tanh_cuda_double_backward_kernel(const data_t* y,
 }
 
 
-std::vector<paddle::Tensor> tanh_forward_cuda(const paddle::Tensor &x){
+std::vector<paddle::Tensor> tanh_cuda_forward(const paddle::Tensor &x){
     auto y = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
 
     int numel = x.size();
@@ -64,7 +64,7 @@ std::vector<paddle::Tensor> tanh_forward_cuda(const paddle::Tensor &x){
     return {y};
 }
 
-std::vector<paddle::Tensor> tanh_backward_cuda(const paddle::Tensor &x,
+std::vector<paddle::Tensor> tanh_cuda_backward(const paddle::Tensor &x,
                                                const paddle::Tensor &y,
                                                const paddle::Tensor &dy){
     auto dx = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
@@ -86,7 +86,7 @@ std::vector<paddle::Tensor> tanh_backward_cuda(const paddle::Tensor &x,
     return {dx};
 }
 
-std::vector<paddle::Tensor> tanh_double_backward_cuda(const paddle::Tensor &y,
+std::vector<paddle::Tensor> tanh_cuda_double_backward(const paddle::Tensor &y,
                                                       // const paddle::Tensor &dy,
                                                       const paddle::Tensor &ddx){
     CHECK_GPU_INPUT(y);

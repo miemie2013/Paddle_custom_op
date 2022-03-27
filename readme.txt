@@ -22,6 +22,7 @@ rm -rf *.cu
 rm -rf build
 rm -rf custom_ops.egg-info
 python setup.py install
+python test2_16_elementwise_grad_paddle_custom.py
 
 
 rm -rf *
