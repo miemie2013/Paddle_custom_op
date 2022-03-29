@@ -25,6 +25,10 @@ python setup.py install
 python test2_16_elementwise_grad_paddle_custom.py
 
 
+cat /opt/conda/envs/python35-paddle120-env/lib/python3.7/site-packages/custom_ops-0.0.0-py3.7-linux-x86_64.egg/custom_ops.py
+
+
+
 rm -rf *
 
 
