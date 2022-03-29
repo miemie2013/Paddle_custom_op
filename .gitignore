@@ -17,4 +17,6 @@ out*/
 # custom op
 *build/
 *custom_ops*
+*/ps_usr_print_log
+ps_usr_print_log
 
