@@ -18,63 +18,43 @@ model.load_state_dict(torch.load("16.pth", map_location="cpu"))
 
 
 
-class MyTanh(torch.autograd.Function):
+class MyGather(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, x):
-        y = torch.tanh(x)
-        ctx.save_for_backward(y)
+    def forward(ctx, x, index):
+        y = x[index]
+        ctx.save_for_backward(x, index)
         return y
 
     @staticmethod
     def backward(ctx, dy):
-        y, = ctx.saved_tensors
-        # dloss_dx = dloss_dy * (1 - torch.square(y))
-        dx = MyTanhGrad.apply(dy, y)
-        return dx
+        x, index = ctx.saved_tensors
+        dx = MyGatherGrad.apply(x, dy, index)
+        dindex = None
+        return dx, dindex
 
-# class MyTanhGrad(torch.autograd.Function):
-#     @staticmethod
-#     def forward(ctx, x, w):
-#         y = x * (1 - torch.square(w))
-#         ctx.save_for_backward(x, w)
-#         return y
-#
-#     @staticmethod
-#     def backward(ctx, dy):
-#         x, w = ctx.saved_tensors
-#         dx = dy * (1 - torch.square(w))
-#         dw = dy * x * -2 * w
-#         return dx, dw
-
-class MyTanhGrad(torch.autograd.Function):
+class MyGatherGrad(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, dy, y):
-        dx = dy * (1 - torch.square(y))
-        ctx.save_for_backward(dy, y)
+    def forward(ctx, x, dy, index):
+        dx = torch.zeros_like(x)
+        dx = dx.scatter_add_(0, index=index.unsqueeze(1), src=dy)
+        # dx[index] = dy
+        ctx.save_for_backward(index)
         return dx
 
     @staticmethod
     def backward(ctx, ddx):
-        dy, y = ctx.saved_tensors
-        ddy = ddx * (1 - torch.square(y))
-        dy_new = ddx * dy * -2 * y
-        # dy_new = None
-        return ddy, dy_new
+        index, = ctx.saved_tensors
+        dy_new = ddx[index]
+        return None, dy_new, None
 
-# class MyTanhGrad(torch.autograd.Function):
-#     @staticmethod
-#     def forward(ctx, dloss_dy, y):
-#         dloss_dx = dloss_dy * (1 - torch.square(y))
-#         ctx.save_for_backward(dloss_dy, y)
-#         return dloss_dx
-#
-#     @staticmethod
-#     def backward(ctx, d2loss_dxdx):
-#         dloss_dy, y = ctx.saved_tensors
-#         ddy = d2loss_dxdx * (1 - torch.square(y))
-#         dy2 = d2loss_dxdx * dloss_dy * -2 * y
-#         return ddy, dy2
 
+
+# https://blog.csdn.net/peng_pi/article/details/123413701
+src = torch.arange(1, 11).reshape((2, 5))
+index = torch.tensor([[0, 1, 2, 0]])
+aaaaaaaa = torch.zeros(3, 5, dtype=src.dtype).scatter_(0, index, src)
+index = torch.tensor([[0, 1, 1, 0]])
+aaaaaaaa2 = torch.zeros(3, 5, dtype=src.dtype).scatter_(0, index, src)
 
 
 dic2 = np.load('16.npz')
@@ -85,11 +65,15 @@ for batch_idx in range(8):
     dloss_dx_pytorch = dic2['batch_%.3d.dloss_dx'%batch_idx]
     y_pytorch = dic2['batch_%.3d.y'%batch_idx]
     x = dic2['batch_%.3d.x'%batch_idx]
+    index = dic2['batch_%.3d.index'%batch_idx]
     x = torch.Tensor(x)
     x.requires_grad_(True)
+    index = torch.Tensor(index).to(torch.int64)
+    index.requires_grad_(False)
 
     y = model(x)
-    loss = MyTanh.apply(y)
+    y = MyGather.apply(y, index)
+    loss = torch.tanh(y)
     dloss_dx = torch.autograd.grad(outputs=[loss.sum()], inputs=[x], create_graph=True, only_inputs=True)[0]
 
     y_paddle = y.cpu().detach().numpy()

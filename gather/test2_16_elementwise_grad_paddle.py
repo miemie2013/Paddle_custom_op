@@ -50,30 +50,31 @@ for batch_idx in range(8):
     print('======================== batch_%.3d ========================'%batch_idx)
     optimizer.clear_gradients()
 
-    dloss_dx_pytorch = dic2['batch_%.3d.dloss_dx'%batch_idx]
+    # dloss_dx_pytorch = dic2['batch_%.3d.dloss_dx'%batch_idx]
     y_pytorch = dic2['batch_%.3d.y'%batch_idx]
     x = dic2['batch_%.3d.x'%batch_idx]
     index = dic2['batch_%.3d.index'%batch_idx]
     x = paddle.to_tensor(x)
     x.stop_gradient = False
     index = paddle.to_tensor(index)
-    # index.stop_gradient = False
+    index.stop_gradient = True
 
     y = model(x)
     y = paddle.gather(y, index)
     loss = paddle.tanh(y)
-    dloss_dx = paddle.grad(outputs=[loss.sum()], inputs=[x], create_graph=True)[0]
+    # dloss_dx = paddle.grad(outputs=[loss.sum()], inputs=[x], create_graph=True)[0]
 
     y_paddle = y.numpy()
     ddd = np.mean((y_pytorch - y_paddle) ** 2)
     print('ddd=%.6f' % ddd)
 
-    dloss_dx_paddle = dloss_dx.numpy()
-    ddd = np.mean((dloss_dx_pytorch - dloss_dx_paddle) ** 2)
-    print('ddd=%.6f' % ddd)
+    # dloss_dx_paddle = dloss_dx.numpy()
+    # ddd = np.mean((dloss_dx_pytorch - dloss_dx_paddle) ** 2)
+    # print('ddd=%.6f' % ddd)
     print()
 
-    loss = dloss_dx.sum() + loss.sum()
+    # loss = dloss_dx.sum() + loss.sum()
+    loss = loss.sum()
     loss.backward()
     optimizer.step()
 print()

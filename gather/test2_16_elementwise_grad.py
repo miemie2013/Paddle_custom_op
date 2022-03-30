@@ -24,7 +24,7 @@ for batch_idx in range(8):
     x.requires_grad_(True)
     index = [0, 1, 3, 5]
     index = torch.Tensor(index).to(torch.int64)
-    # index.requires_grad_(False)
+    index.requires_grad_(False)
 
     y = model(x)
     y = y[index]
