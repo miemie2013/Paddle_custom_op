@@ -19,6 +19,25 @@ rm -rf *.cpp
 rm -rf *.cu
 
 
+python setup.py install如果报错
+```
+The following error occurred while trying to add or remove files in the
+installation directory:
+
+    [Errno 13] Permission denied: '/home/miemie2013/anaconda3/lib/python3.9/site-packages/test-easy-install-5206.write-test'
+
+The installation directory you specified (via --install-dir, --prefix, or
+the distutils default setting) was:
+
+    /home/miemie2013/anaconda3/lib/python3.9/site-packages/
+
+Perhaps your account does not have write access to this directory?
+```
+就输入
+sudo chown -R $USER:$USER ~/anaconda3
+
+
+
 rm -rf build
 rm -rf custom_ops.egg-info
 python setup.py install
