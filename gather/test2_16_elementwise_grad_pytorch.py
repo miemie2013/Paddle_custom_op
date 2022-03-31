@@ -43,8 +43,8 @@ class MyGatherGrad(torch.autograd.Function):
     @staticmethod
     def backward(ctx, ddx):
         index, = ctx.saved_tensors
-        dy_new = ddx[index]
-        return None, dy_new, None
+        ddy = ddx[index]
+        return None, ddy, None
 
 
 
