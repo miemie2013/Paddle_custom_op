@@ -22,7 +22,7 @@ for batch_idx in range(8):
 
     x = torch.randn([batch_size, w_dim])
     x.requires_grad_(True)
-    index = [0, 1, 3, 5]
+    index = [0, 1, 3, 3, 3, 5]
     index = torch.Tensor(index).to(torch.int64)
     index.requires_grad_(False)
 

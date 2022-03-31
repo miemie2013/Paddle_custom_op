@@ -58,7 +58,7 @@ std::vector<std::vector<int64_t>> tanh_double_backward_InferShape(
     const std::vector<int64_t>& y_shape,
     const std::vector<int64_t>& dy_shape,
     const std::vector<int64_t>& ddx_shape) {
-  return {y_shape};
+  return {dy_shape, dy_shape};
 }
 
 PD_BUILD_OP(tanh_op)

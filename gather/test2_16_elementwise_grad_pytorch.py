@@ -36,8 +36,7 @@ class MyGatherGrad(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, dy, index):
         dx = torch.zeros_like(x)
-        dx = dx.scatter_add_(0, index=index.unsqueeze(1), src=dy)
-        # dx[index] = dy
+        dx = torch.scatter_add(dx, 0, index=index.unsqueeze(1).repeat([1, dx.shape[1]]), src=dy)
         ctx.save_for_backward(index)
         return dx
 
@@ -55,6 +54,8 @@ index = torch.tensor([[0, 1, 2, 0]])
 aaaaaaaa = torch.zeros(3, 5, dtype=src.dtype).scatter_(0, index, src)
 index = torch.tensor([[0, 1, 1, 0]])
 aaaaaaaa2 = torch.zeros(3, 5, dtype=src.dtype).scatter_(0, index, src)
+index = torch.tensor([[0, 0, 0, 0, 0], [1, 1, 1, 1, 1]])
+aaaaaaaa3 = torch.zeros(3, 5, dtype=src.dtype).scatter_(0, index, src)
 
 
 dic2 = np.load('16.npz')
