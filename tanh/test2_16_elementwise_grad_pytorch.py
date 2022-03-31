@@ -17,7 +17,6 @@ optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
 model.load_state_dict(torch.load("16.pth", map_location="cpu"))
 
 
-
 class MyTanh(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x):
@@ -28,23 +27,8 @@ class MyTanh(torch.autograd.Function):
     @staticmethod
     def backward(ctx, dy):
         y, = ctx.saved_tensors
-        # dloss_dx = dloss_dy * (1 - torch.square(y))
         dx = MyTanhGrad.apply(dy, y)
         return dx
-
-# class MyTanhGrad(torch.autograd.Function):
-#     @staticmethod
-#     def forward(ctx, x, w):
-#         y = x * (1 - torch.square(w))
-#         ctx.save_for_backward(x, w)
-#         return y
-#
-#     @staticmethod
-#     def backward(ctx, dy):
-#         x, w = ctx.saved_tensors
-#         dx = dy * (1 - torch.square(w))
-#         dw = dy * x * -2 * w
-#         return dx, dw
 
 class MyTanhGrad(torch.autograd.Function):
     @staticmethod
@@ -58,22 +42,37 @@ class MyTanhGrad(torch.autograd.Function):
         dy, y = ctx.saved_tensors
         ddy = ddx * (1 - torch.square(y))
         dy_new = ddx * dy * -2 * y
-        # dy_new = None
         return ddy, dy_new
 
-# class MyTanhGrad(torch.autograd.Function):
+
+# class MyTanh(torch.autograd.Function):
 #     @staticmethod
-#     def forward(ctx, dloss_dy, y):
-#         dloss_dx = dloss_dy * (1 - torch.square(y))
-#         ctx.save_for_backward(dloss_dy, y)
-#         return dloss_dx
+#     def forward(ctx, x):
+#         y = torch.tanh(x)
+#         ctx.save_for_backward(x)
+#         return y
 #
 #     @staticmethod
-#     def backward(ctx, d2loss_dxdx):
-#         dloss_dy, y = ctx.saved_tensors
-#         ddy = d2loss_dxdx * (1 - torch.square(y))
-#         dy2 = d2loss_dxdx * dloss_dy * -2 * y
-#         return ddy, dy2
+#     def backward(ctx, dy):
+#         x, = ctx.saved_tensors
+#         dx = MyTanhGrad.apply(dy, x)
+#         return dx
+#
+# class MyTanhGrad(torch.autograd.Function):
+#     @staticmethod
+#     def forward(ctx, dy, x):
+#         dx = dy * (1 - torch.square(torch.tanh(x)))
+#         ctx.save_for_backward(dy, x)
+#         return dx
+#
+#     @staticmethod
+#     def backward(ctx, ddx):
+#         dy, x = ctx.saved_tensors
+#         ddy = ddx * (1 - torch.square(torch.tanh(x)))
+#         dx_new = ddx * dy * -2 * torch.tanh(x) * (1 - torch.square(torch.tanh(x)))
+#         return ddy, dx_new
+
+
 
 
 

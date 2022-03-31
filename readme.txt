@@ -11,6 +11,17 @@ paddle/phi/kernels/funcs/gather.h
 GatherV2GradFunction
 
 
+可变形卷积的源码位于飞桨2.0版本的
+paddle/fluid/operators/deformable_conv_op.cu
+
+
+gather op的源码位于飞桨2.0版本的
+paddle/fluid/operators/gather_op.cu
+会跳转到paddle/fluid/operators/gather.cu.h的
+GatherV2CUDAFunction()、GatherV2GradCUDAFunction()函数
+
+
+
 
 cd ~/work/tanh
 
