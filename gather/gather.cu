@@ -138,7 +138,7 @@ std::vector<paddle::Tensor> gather_cuda_forward(const paddle::Tensor& input, con
     }
     int index_size = index_shape[0];
 
-    auto output = paddle::Tensor(paddle::PlaceType::kGPU, output_shape);
+    paddle::Tensor output = paddle::Tensor(paddle::PlaceType::kGPU, output_shape);
 
     // slice size
     int slice_size = 1;
@@ -243,31 +243,41 @@ std::vector<paddle::Tensor> gather_cuda_backward(const paddle::Tensor& input, co
 }
 
 
-// std::vector<paddle::Tensor> gather_cuda_double_backward(const paddle::Tensor& y,
-//                                                       const paddle::Tensor& dy,
-//                                                       const paddle::Tensor& ddx){
-//     auto ddy = paddle::Tensor(paddle::PlaceType::kGPU, y.shape());
-//     auto dy_new = paddle::Tensor(paddle::PlaceType::kGPU, y.shape());
-//
-//     int numel = y.size();
-//     int grid = (numel + BLOCK - 1) / BLOCK;
-//
-//     PD_DISPATCH_FLOATING_TYPES(
-//         y.type(), "gather_cuda_double_backward_kernel", ([&] {
-//             gather_cuda_double_backward_kernel<data_t><<<grid, BLOCK, 0, y.stream()>>>(
-//                 y.data<data_t>(),
-//                 dy.data<data_t>(),
-//                 ddx.data<data_t>(),
-//                 ddy.mutable_data<data_t>(y.place()),
-//                 dy_new.mutable_data<data_t>(y.place()),
-//                 numel
-//             );
-//         })
-//     );
-//
-//     return {ddy, dy_new};
-// }
 
+std::vector<paddle::Tensor> gather_cuda_double_backward(const paddle::Tensor& input, const paddle::Tensor& index, const paddle::Tensor& ddx){
+    std::vector<int64_t> input_shape = input.shape();
+    std::vector<int64_t> index_shape = index.shape();
+    std::vector<int64_t> output_shape;
+    output_shape.push_back(index_shape[0]);
+    for (int i = 1; i < input_shape.size(); i++) {
+        output_shape.push_back(input_shape[i]);
+    }
+    int index_size = index_shape[0];
 
+    paddle::Tensor ddy = paddle::Tensor(paddle::PlaceType::kGPU, output_shape);
+
+    // slice size
+    int slice_size = 1;
+    for (int i = 1; i < input_shape.size(); ++i) {
+        slice_size *= input_shape[i];
+    }
+
+    int block = 512;
+    int n = slice_size * index_size;
+    int grid = (n + block - 1) / block;
+
+    PD_DISPATCH_FLOATING_TYPES(
+        input.type(), "GatherCUDAKernel", ([&] {
+            GatherCUDAKernel<data_t><<<grid, block, 0, input.stream()>>>(
+                ddx.data<data_t>(),
+                index.data<int64_t>(),
+                ddy.mutable_data<data_t>(input.place()),
+                index_size, slice_size
+            );
+        })
+    );
+
+    return {ddy};
+}
 
 

@@ -30,15 +30,14 @@ for batch_idx in range(8):
     y = y[index]
     loss = torch.tanh(y)
 
-    # dloss_dx = torch.autograd.grad(outputs=[loss.sum()], inputs=[x], create_graph=True, only_inputs=True)[0]
+    dloss_dx = torch.autograd.grad(outputs=[loss.sum()], inputs=[x], create_graph=True, only_inputs=True)[0]
 
-    # dic['batch_%.3d.dloss_dx'%batch_idx] = dloss_dx.cpu().detach().numpy()
+    dic['batch_%.3d.dloss_dx'%batch_idx] = dloss_dx.cpu().detach().numpy()
     dic['batch_%.3d.y'%batch_idx] = y.cpu().detach().numpy()
     dic['batch_%.3d.x'%batch_idx] = x.cpu().detach().numpy()
     dic['batch_%.3d.index'%batch_idx] = index.cpu().detach().numpy()
 
-    # loss = dloss_dx.sum() + loss.sum()
-    loss = loss.sum()
+    loss = dloss_dx.sum() + loss.sum()
     loss.backward()
     optimizer.step()
 np.savez('16', **dic)
