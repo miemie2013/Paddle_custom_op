@@ -7,7 +7,7 @@ gather op的源码位于飞桨2.0版本的
 paddle/fluid/operators/gather_op.cu
 会跳转到paddle/fluid/operators/gather.cu.h的
 GPUGather()、
-paddle/fluid/operators/gather.cu.h的
+paddle/fluid/operators/scatter.cu.h的
 GPUScatterAssign()函数。
 
 
@@ -62,6 +62,9 @@ rm -rf *.cpp
 rm -rf *.cu
 rm -rf build
 rm -rf custom_*.egg-info
+
+
+rm -rf *.cpp && rm -rf *.cu && rm -rf build && rm -rf custom_*.egg-info
 
 
 python setup.py install

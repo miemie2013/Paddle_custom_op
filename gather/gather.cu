@@ -2,19 +2,6 @@
 #include <vector>
 #include <cuda.h>
 #include <cuda_runtime.h>
-#define CHECK_GPU_INPUT(x) \
-  PD_CHECK(x.place() == paddle::PlaceType::kGPU, #x " must be a GPU Tensor.")
-
-
-// template<typename data_t>
-// __global__ void gather_cuda_forward_kernel(const data_t* x,
-//                                          data_t* y,
-//                                          int num){
-//     int gid = blockIdx.x * blockDim.x + threadIdx.x;
-//     for (int i = gid; i < num; i += blockDim.x * gridDim.x) {
-//         y[i] = std::tanh(x[i]);
-//     }
-// }
 
 
 #define CUDA_KERNEL_LOOP(i, n)                            \
@@ -23,17 +10,36 @@
        i < (n); i += step)
 
 
-
-template <typename T, typename IndexT = int>
-__global__ void gather_cuda_forward_kernel(const T* params, const IndexT* indices,
-                                 T* output, size_t index_size,
+// 暂时不支持定义2个泛型？
+// template<typename data_t, typename index_t>
+template<typename data_t>
+__global__ void GatherCUDAKernel(const data_t* params, const int64_t* indices,
+                                 data_t* output, size_t index_size,
                                  size_t slice_size) {
   CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
-    IndexT gather_i = indices[indices_i];
-    IndexT params_i = gather_i * slice_size + slice_i;
+    int64_t gather_i = indices[indices_i];
+    int64_t params_i = gather_i * slice_size + slice_i;
     *(output + i) = *(params + params_i);
+  }
+}
+
+template<typename data_t>
+__global__ void ScatterCUDAKernel(const data_t* params, const int64_t* indices,
+                                  data_t* output, size_t index_size,
+                                  size_t slice_size, bool overwrite) {
+  CUDA_KERNEL_LOOP(i, index_size * slice_size) {
+    int indices_i = i / slice_size;
+    int slice_i = i - indices_i * slice_size;  // offset inside the slice
+    int64_t scatter_i = indices[indices_i];
+    int64_t out_i = scatter_i * slice_size + slice_i;
+//     if (overwrite) {
+//       *(output + out_i) = *(params + i);
+//     } else {
+//       paddle::platform::CudaAtomicAdd(output + out_i, *(params + i));
+//     }
+    *(output + out_i) = *(params + i);
   }
 }
 
@@ -66,7 +72,6 @@ __global__ void gather_cuda_forward_kernel(const T* params, const IndexT* indice
 // }
 
 
-template <typename T, typename IndexT = int>
 std::vector<paddle::Tensor> gather_cuda_forward(const paddle::Tensor& input, const paddle::Tensor& index){
     std::vector<int64_t> input_shape = input.shape();
     std::vector<int64_t> index_shape = index.shape();
@@ -85,23 +90,55 @@ std::vector<paddle::Tensor> gather_cuda_forward(const paddle::Tensor& input, con
         slice_size *= input_shape[i];
     }
 
-//     T* p_output = output.data<T>();
-//     T* p_output = output.mutable_data<T>(input.place());
-
     int block = 512;
     int n = slice_size * index_size;
     int grid = (n + block - 1) / block;
 
-
     PD_DISPATCH_FLOATING_TYPES(
-        input.type(), "gather_cuda_forward_kernel", ([&] {
-            gather_cuda_forward_kernel<T, IndexT><<<grid, block, 0, input.stream()>>>(
-                input.data<T>(), index.data<IndexT>(), output.mutable_data<T>(input.place()), index_size, slice_size
+        input.type(), "GatherCUDAKernel", ([&] {
+            GatherCUDAKernel<data_t><<<grid, block, 0, input.stream()>>>(
+                input.data<data_t>(),
+                index.data<int64_t>(),
+                output.mutable_data<data_t>(input.place()),
+                index_size, slice_size
             );
         })
     );
 
     return {output};
+}
+
+std::vector<paddle::Tensor> gather_cuda_backward(const paddle::Tensor& input, const paddle::Tensor& index, const paddle::Tensor& doutput){
+    std::vector<int64_t> input_shape = input.shape();
+    std::vector<int64_t> index_shape = index.shape();
+    int index_size = index_shape[0];
+
+    auto dinput = paddle::Tensor(paddle::PlaceType::kGPU, input_shape);
+
+    // slice size
+    int slice_size = 1;
+    for (int i = 1; i < input_shape.size(); ++i) {
+        slice_size *= input_shape[i];
+    }
+
+    int block = 512;
+    int n = slice_size * index_size;
+    int grid = (n + block - 1) / block;
+
+    bool overwrite = true;
+
+    PD_DISPATCH_FLOATING_TYPES(
+        input.type(), "ScatterCUDAKernel", ([&] {
+            ScatterCUDAKernel<data_t><<<grid, block, 0, input.stream()>>>(
+                doutput.data<data_t>(),
+                index.data<int64_t>(),
+                dinput.mutable_data<data_t>(input.place()),
+                index_size, slice_size, overwrite
+            );
+        })
+    );
+
+    return {dinput};
 }
 
 // std::vector<paddle::Tensor> gather_cuda_backward(const paddle::Tensor& x,
@@ -129,9 +166,6 @@ std::vector<paddle::Tensor> gather_cuda_forward(const paddle::Tensor& input, con
 // std::vector<paddle::Tensor> gather_cuda_double_backward(const paddle::Tensor& y,
 //                                                       const paddle::Tensor& dy,
 //                                                       const paddle::Tensor& ddx){
-//     CHECK_GPU_INPUT(y);
-//     CHECK_GPU_INPUT(dy);
-//     CHECK_GPU_INPUT(ddx);
 //     auto ddy = paddle::Tensor(paddle::PlaceType::kGPU, y.shape());
 //     auto dy_new = paddle::Tensor(paddle::PlaceType::kGPU, y.shape());
 //
