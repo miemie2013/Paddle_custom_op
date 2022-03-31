@@ -2,26 +2,40 @@
 目前只有develop分支支持二阶导数：
 python -m pip install paddlepaddle-gpu==0.0.0.post101 -f https://www.paddlepaddle.org.cn/whl/linux/gpu/develop.html
 
-Paddle中tanh二阶导的源码位于：
-paddle/phi/kernels/funcs/activation_functor.h
-TanhGradGradFunctor
 
-Paddle中gather一阶导的源码位于：
-paddle/phi/kernels/funcs/gather.h
-GatherV2GradFunction
-
-
-可变形卷积的源码位于飞桨2.0版本的
-paddle/fluid/operators/deformable_conv_op.cu
+gather op的源码位于飞桨2.0版本的
+paddle/fluid/operators/gather_op.cu
+会跳转到paddle/fluid/operators/gather.cu.h的
+GPUGather()、
+paddle/fluid/operators/gather.cu.h的
+GPUScatterAssign()函数。
 
 
+=====================================================
+paddle::Tensor& x   的常见属性：
 
 
-cd ~/work/tanh
+int numel = x.size();    // x的元素个数
+data_t* x_data = x.data<data_t>();    // 返回x里的数据的指针
+int input_size = x.numel();   // 返回x里的元素个数
+auto input_dim = x.dims();    // 返回一个int数组，表示x的形状。比如若x的形状是[2, 512]，返回数组[2, 512]。相当于python里x.shape
 
 
-rm -rf *.cpp
-rm -rf *.cu
+auto ddy = paddle::Tensor(paddle::PlaceType::kGPU, y.shape());   // 创建一个GPU上的新的张量，形状是y.shape()
+data_t* ddy_data = ddy.mutable_data<data_t>(y.place());    // 返回ddy里的数据的指针，可写
+
+
+
+=====================================================
+
+
+
+
+
+
+cd ~/work/gather
+
+
 
 
 python setup.py install如果报错
@@ -43,9 +57,16 @@ sudo chown -R $USER:$USER ~/anaconda3
 
 
 
+
+rm -rf *.cpp
+rm -rf *.cu
 rm -rf build
-rm -rf custom_ops.egg-info
+rm -rf custom_*.egg-info
+
+
 python setup.py install
+
+
 python test2_16_elementwise_grad_paddle_custom.py
 
 
