@@ -3,6 +3,60 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
+// ================================ CudaAtomicAdd 源码位于"paddle/fluid/platform/device/gpu/gpu_primitives.h" ================================
+#define CUDA_ATOMIC_WRAPPER(op, T) \
+  __device__ __forceinline__ T CudaAtomic##op(T *address, const T val)
+
+#define USE_CUDA_ATOMIC(op, T) \
+  CUDA_ATOMIC_WRAPPER(op, T) { return atomic##op(address, val); }
+
+// Default thread count per block(or block size).
+// TODO(typhoonzero): need to benchmark against setting this value
+//                    to 1024.
+constexpr int PADDLE_CUDA_NUM_THREADS = 512;
+
+// For atomicAdd.
+USE_CUDA_ATOMIC(Add, float);
+USE_CUDA_ATOMIC(Add, int);
+USE_CUDA_ATOMIC(Add, unsigned int);
+// CUDA API uses unsigned long long int, we cannot use uint64_t here.
+// It because unsigned long long int is not necessarily uint64_t
+USE_CUDA_ATOMIC(Add, unsigned long long int);  // NOLINT
+
+CUDA_ATOMIC_WRAPPER(Add, int64_t) {
+  // Here, we check long long int must be int64_t.
+  static_assert(sizeof(int64_t) == sizeof(long long int),  // NOLINT
+                "long long should be int64");
+  return CudaAtomicAdd(
+      reinterpret_cast<unsigned long long int *>(address),  // NOLINT
+      static_cast<unsigned long long int>(val));            // NOLINT
+}
+
+#if defined(__HIPCC__) || (defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600)
+USE_CUDA_ATOMIC(Add, double);
+#else
+CUDA_ATOMIC_WRAPPER(Add, double) {
+  unsigned long long int *address_as_ull =                  // NOLINT
+      reinterpret_cast<unsigned long long int *>(address);  // NOLINT
+  unsigned long long int old = *address_as_ull, assumed;    // NOLINT
+
+  do {
+    assumed = old;
+    old = atomicCAS(address_as_ull, assumed,
+                    __double_as_longlong(val + __longlong_as_double(assumed)));
+
+    // Note: uses integer comparison to avoid hang in case of NaN
+  } while (assumed != old);
+
+  return __longlong_as_double(old);
+}
+#endif
+
+// ================================ CudaAtomicAdd （完） ================================
+
+
+
+
 
 #define CUDA_KERNEL_LOOP(i, n)                            \
   for (int32_t i = blockIdx.x * blockDim.x + threadIdx.x, \
@@ -51,25 +105,13 @@ __global__ void ScatterCUDAKernel(const data_t* params, const int64_t* indices,
     if (overwrite) {
       *(output + out_i) = *(params + i);
     } else {
-      // paddle::platform::CudaAtomicAdd(output + out_i, *(params + i));
-      *(output + out_i) += *(params + i);
+      CudaAtomicAdd(output + out_i, *(params + i));
     }
   }
 }
 
 
 
-
-// template<typename data_t>
-// __global__ void gather_cuda_backward_kernel(const data_t* x,
-//                                           const data_t* dy,
-//                                           data_t* dx,
-//                                           int num){
-//     int gid = blockIdx.x * blockDim.x + threadIdx.x;
-//     for (int i = gid; i < num; i += blockDim.x * gridDim.x) {
-//         dx[i] = dy[i] * (1 - std::pow(std::tanh(x[i]), 2));
-//     }
-// }
 
 // template<typename data_t>
 // __global__ void gather_cuda_double_backward_kernel(const data_t* y,
@@ -200,27 +242,6 @@ std::vector<paddle::Tensor> gather_cuda_backward(const paddle::Tensor& input, co
     return {dinput};
 }
 
-// std::vector<paddle::Tensor> gather_cuda_backward(const paddle::Tensor& x,
-//                                                const paddle::Tensor& y,
-//                                                const paddle::Tensor& dy){
-//     auto dx = paddle::Tensor(paddle::PlaceType::kGPU, x.shape());
-//
-//     int numel = y.size();
-//     int grid = (numel + BLOCK - 1) / BLOCK;
-//
-//     PD_DISPATCH_FLOATING_TYPES(
-//         x.type(), "gather_cuda_backward_kernel", ([&] {
-//             gather_cuda_backward_kernel<data_t><<<grid, BLOCK, 0, x.stream()>>>(
-//                 x.data<data_t>(),
-//                 dy.data<data_t>(),
-//                 dx.mutable_data<data_t>(x.place()),
-//                 numel
-//             );
-//         })
-//     );
-//
-//     return {dx};
-// }
 
 // std::vector<paddle::Tensor> gather_cuda_double_backward(const paddle::Tensor& y,
 //                                                       const paddle::Tensor& dy,
