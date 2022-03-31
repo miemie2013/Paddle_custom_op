@@ -67,6 +67,11 @@ rm -rf custom_*.egg-info
 rm -rf *.cpp && rm -rf *.cu && rm -rf build && rm -rf custom_*.egg-info
 
 
+# 修改源码后重新安装（不用删除build文件夹和custom_*.egg-info文件夹）：
+
+rm -rf *.cpp && rm -rf *.cu
+
+
 python setup.py install
 
 
