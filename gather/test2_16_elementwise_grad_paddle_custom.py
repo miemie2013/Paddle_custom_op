@@ -58,6 +58,7 @@ for batch_idx in range(8):
     x = paddle.to_tensor(x)
     x.stop_gradient = False
     index = paddle.to_tensor(index)
+    index = paddle.cast(index, dtype=paddle.int32)
     index.stop_gradient = True
 
     y = model(x)

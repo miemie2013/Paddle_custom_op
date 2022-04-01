@@ -67,41 +67,41 @@ CUDA_ATOMIC_WRAPPER(Add, double) {
 // 暂时不支持定义2个泛型？
 // template<typename data_t, typename index_t>
 template<typename data_t>
-__global__ void GatherCUDAKernel(const data_t* params, const int64_t* indices,
+__global__ void GatherCUDAKernel(const data_t* params, const int32_t* indices,
                                  data_t* output, size_t index_size,
                                  size_t slice_size) {
   CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
-    int64_t gather_i = indices[indices_i];
-    int64_t params_i = gather_i * slice_size + slice_i;
+    int32_t gather_i = indices[indices_i];
+    int32_t params_i = gather_i * slice_size + slice_i;
     *(output + i) = *(params + params_i);
   }
 }
 
 
 template<typename data_t>
-__global__ void ScatterInitCUDAKernel(const int64_t* indices, data_t* output,
+__global__ void ScatterInitCUDAKernel(const int32_t* indices, data_t* output,
                                       size_t index_size, size_t slice_size,
                                       bool overwrite) {
   CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
-    int64_t scatter_i = indices[indices_i];
-    int64_t out_i = scatter_i * slice_size + slice_i;
+    int32_t scatter_i = indices[indices_i];
+    int32_t out_i = scatter_i * slice_size + slice_i;
     *(output + out_i) = static_cast<data_t>(0);
   }
 }
 
 template<typename data_t>
-__global__ void ScatterCUDAKernel(const data_t* params, const int64_t* indices,
+__global__ void ScatterCUDAKernel(const data_t* params, const int32_t* indices,
                                   data_t* output, size_t index_size,
                                   size_t slice_size, bool overwrite) {
   CUDA_KERNEL_LOOP(i, index_size * slice_size) {
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
-    int64_t scatter_i = indices[indices_i];
-    int64_t out_i = scatter_i * slice_size + slice_i;
+    int32_t scatter_i = indices[indices_i];
+    int32_t out_i = scatter_i * slice_size + slice_i;
     if (overwrite) {
       *(output + out_i) = *(params + i);
     } else {
@@ -110,22 +110,6 @@ __global__ void ScatterCUDAKernel(const data_t* params, const int64_t* indices,
   }
 }
 
-
-
-
-// template<typename data_t>
-// __global__ void gather_cuda_double_backward_kernel(const data_t* y,
-//                                                  const data_t* dy,
-//                                                  const data_t* ddx,
-//                                                  data_t* ddy,
-//                                                  data_t* dy_new,
-//                                                  int num){
-//     int64_t gid = blockIdx.x * blockDim.x + threadIdx.x;
-//     for (int64_t i = num; i < num; i += blockDim.x * gridDim.x) {
-//         ddy[i] = ddx[i] * (1 - std::pow(y[i], 2));
-//         dy_new[i] = ddx[i] * dy[i] * static_cast<data_t>(-2.) * y[i];
-//     }
-// }
 
 
 std::vector<paddle::Tensor> gather_cuda_forward(const paddle::Tensor& input, const paddle::Tensor& index){
@@ -154,7 +138,7 @@ std::vector<paddle::Tensor> gather_cuda_forward(const paddle::Tensor& input, con
         input.type(), "GatherCUDAKernel", ([&] {
             GatherCUDAKernel<data_t><<<grid, block, 0, input.stream()>>>(
                 input.data<data_t>(),
-                index.data<int64_t>(),
+                index.data<int32_t>(),
                 output.mutable_data<data_t>(input.place()),
                 index_size, slice_size
             );
@@ -220,7 +204,7 @@ std::vector<paddle::Tensor> gather_cuda_backward(const paddle::Tensor& input, co
         PD_DISPATCH_FLOATING_TYPES(
             input.type(), "ScatterInitCUDAKernel", ([&] {
                 ScatterInitCUDAKernel<data_t><<<grid, block, 0, input.stream()>>>(
-                    index.data<int64_t>(),
+                    index.data<int32_t>(),
                     dinput.mutable_data<data_t>(input.place()),
                     index_size, slice_size, overwrite
                 );
@@ -232,7 +216,7 @@ std::vector<paddle::Tensor> gather_cuda_backward(const paddle::Tensor& input, co
         input.type(), "ScatterCUDAKernel", ([&] {
             ScatterCUDAKernel<data_t><<<grid, block, 0, input.stream()>>>(
                 doutput.data<data_t>(),
-                index.data<int64_t>(),
+                index.data<int32_t>(),
                 dinput.mutable_data<data_t>(input.place()),
                 index_size, slice_size, overwrite
             );
@@ -270,7 +254,7 @@ std::vector<paddle::Tensor> gather_cuda_double_backward(const paddle::Tensor& in
         input.type(), "GatherCUDAKernel", ([&] {
             GatherCUDAKernel<data_t><<<grid, block, 0, input.stream()>>>(
                 ddx.data<data_t>(),
-                index.data<int64_t>(),
+                index.data<int32_t>(),
                 ddy.mutable_data<data_t>(input.place()),
                 index_size, slice_size
             );
